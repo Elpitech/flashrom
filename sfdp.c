@@ -36,6 +36,9 @@
    2) 3-bytes mode with Ext.Addr.Register (FBA_USE_EXT_ADDR_REG_BY_DEFAULT defined) */
 /* #define FBA_USE_EXT_ADDR_REG_BY_DEFAULT 1 */
 
+/* For testing purposes only. Tests JESD216B SFDP compliance without proper flash chip */
+/* #define JESD216B_SIMULATION 1 */
+
 static int spi_sfdp_read_sfdp_chunk(struct flashctx *flash, uint32_t address, uint8_t *buf, int len)
 {
 	int i, ret;
@@ -521,6 +524,73 @@ static int sfdp_parse_4ba_table(struct flashchip *chip, uint8_t *buf, uint16_t l
 	return 0;
 }
 
+#ifdef JESD216B_SIMULATION
+/* This simulation increases size of Basic Flash Parameter Table
+   to have 16 dwords size and fills 16th dword with fake information
+   that is required to test JESD216B compliance. */
+int sfdp_jesd216b_simulation_dw16(uint8_t** ptbuf, uint16_t* plen)
+{
+	uint8_t* tbufsim;
+	uint16_t lensim = 16 * 4;
+
+	tbufsim = malloc(lensim);
+	if (tbufsim == NULL) {
+		msg_gerr("Out of memory!\n");
+		return 1;
+	}
+
+	msg_cdbg("\n=== SIMULATION of JESD216B 16th Dword of Basic Flash Parameter Table\n");
+
+	memset(tbufsim, 0, 16 * 4);
+	memcpy(tbufsim, *ptbuf, min(*plen, 15 * 4));
+
+	tbufsim[(4*10) + 0] = 8 << 4; /* page size = 256 */
+
+	*((uint32_t*)&tbufsim[15 * 4]) = /*JEDEC_BFPT_DW16_ENTER_B7 | */
+					 JEDEC_BFPT_DW16_ENTER_B7_WE |
+					 JEDEC_BFPT_DW16_ENTER_EXTENDED_ADDR_REG /* |
+					 JEDEC_BFPT_DW16_ENTER_BANK_ADDR_REG_EN_BIT |
+					 JEDEC_BFPT_DW16_ENTER_NV_CONFIG_REG |
+					 JEDEC_BFPT_DW16_VENDOR_SET |
+					 JEDEC_BFPT_DW16_4_BYTES_ADDRESS_ONLY */ ;
+
+	free(*ptbuf);
+	*ptbuf = tbufsim;
+	*plen = lensim;
+	return 0;
+}
+
+/* This simulation created fake 4-bytes Address Instruction Table
+   with features information to test JESD216B compliance. */
+int sfdp_jesd216b_simulation_4bait(uint8_t** ptbuf, uint16_t* plen)
+{
+	uint8_t* tbufsim;
+	uint16_t lensim = 2 * 4;
+
+	tbufsim = malloc(lensim);
+	if (tbufsim == NULL) {
+		msg_gerr("Out of memory!\n");
+		return 1;
+	}
+
+	msg_cdbg("\n=== SIMULATION of JESD216B 4-bytes Address Instruction Table\n");
+
+	*((uint32_t*)&tbufsim[0]) = JEDEC_4BAIT_READ_SUPPORT /*|
+				    JEDEC_4BAIT_PROGRAM_SUPPORT |
+				    JEDEC_4BAIT_ERASE_TYPE_1_SUPPORT |
+				    JEDEC_4BAIT_ERASE_TYPE_2_SUPPORT |
+				    JEDEC_4BAIT_ERASE_TYPE_3_SUPPORT |
+				    JEDEC_4BAIT_ERASE_TYPE_4_SUPPORT */;
+	*((uint32_t*)&tbufsim[4]) = 0xFFFFFFFF;
+	/* *((uint32_t*)&tbufsim[4]) = 0xFFDC5C21; */
+
+	free(*ptbuf);
+	*ptbuf = tbufsim;
+	*plen = lensim;
+	return 0;
+}
+#endif
+
 int probe_spi_sfdp(struct flashctx *flash)
 {
 	int ret = 0;
@@ -645,6 +715,10 @@ int probe_spi_sfdp(struct flashctx *flash)
 					 "parameter table is not 0xFF00 as"
 					 "demanded by JESD216 (warning only)."
 					 "\n");
+#ifdef JESD216B_SIMULATION
+			if(!sfdp_jesd216b_simulation_dw16(&tbuf, &len))
+				sfdp_rev_16 = 1; /* pretend as SFDP rev 1.6 */
+#endif
 			if (hdrs[i].v_major != 0x01) {
 				msg_cdbg("The chip contains an unknown "
 					  "version of the JEDEC flash "
@@ -655,6 +729,10 @@ int probe_spi_sfdp(struct flashctx *flash)
 					 "skipping it.\n", len);
 			} else if (sfdp_fill_flash(flash->chip, tbuf, len, sfdp_rev_16) == 0)
 				ret = 1;
+#ifdef JESD216B_SIMULATION
+			if(ret == 1 && !sfdp_jesd216b_simulation_4bait(&tbuf, &len))
+				sfdp_parse_4ba_table(flash->chip, tbuf, len);
+#endif
 		}
 		/* JEDEC SFDP 4-byte address instruction table. From SFDP revision 1.6 only.
 		   This parsing shoukd be called after basic flash parameter table is parsed. */
