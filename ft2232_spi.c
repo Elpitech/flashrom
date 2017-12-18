@@ -29,6 +29,7 @@
 #include "programmer.h"
 #include "spi.h"
 #include <ftdi.h>
+#include "chipdrivers.h"
 
 /* This is not defined in libftdi.h <0.20 (c7e4c09e68cfa6f5e112334aa1b3bb23401c8dc7 to be exact).
  * Some tests indicate that his is the only change that it is needed to support the FT232H in flashrom. */
@@ -157,13 +158,16 @@ static int ft2232_spi_send_command(struct flashctx *flash,
 				   const unsigned char *writearr,
 				   unsigned char *readarr);
 
+static int ft2232_spi_read(struct flashctx *flash, uint8_t *buf,
+			    unsigned int start, unsigned int len);
+
 static const struct spi_master spi_master_ft2232 = {
 	.type		= SPI_CONTROLLER_FT2232,
 	.max_data_read	= 64 * 1024,
 	.max_data_write	= 256,
 	.command	= ft2232_spi_send_command,
 	.multicommand	= default_spi_send_multicommand,
-	.read		= default_spi_read,
+	.read		= ft2232_spi_read,
 	.write_256	= default_spi_write_256,
 	.write_aai	= default_spi_write_aai,
 };
@@ -515,6 +519,53 @@ static int ft2232_spi_send_command(struct flashctx *flash,
 		msg_perr("send_buf failed at end: %i\n", ret);
 
 	return failed ? -1 : 0;
+}
+
+/* FIXME: This function is optimized so that it does not split each transaction
+ * into chip page_size long blocks unnecessarily like spi_read_chunked. This has
+ * the advantage that it is much faster for most chips, but breaks those with
+ * non-continuous reads. When spi_read_chunked is fixed this method can be removed. */
+static int ft2232_spi_read(struct flashctx *flash, uint8_t *buf,
+			    unsigned int start, unsigned int len)
+{
+	int ret;
+	unsigned int i, cur_len;
+	const unsigned int max_read = spi_master_ft2232.max_data_read;
+	int show_progress = 0;
+	unsigned int percent_last = 0, percent_current = 0;
+
+	/* progress visualizaion init */
+	if(len >= MIN_LENGTH_TO_SHOW_READ_PROGRESS) {
+		msg_cinfo(" "); /* only this space will go to logfile but
+				 all strings with \b wont. */
+		msg_cinfo("\b 0%%");
+		percent_last = percent_current = 0;
+		show_progress = 1; /* enable progress visualizaion */
+	}
+
+	for (i = 0; i < len; i += cur_len) {
+		cur_len = min(max_read, (len - i));
+		ret = (flash->chip->feature_bits & FEATURE_4BA_SUPPORT) == 0
+			? spi_nbyte_read(flash, start + i, buf + i, cur_len)
+			: flash->chip->four_bytes_addr_funcs.read_nbyte(flash,
+						 start + i, buf + i, cur_len);
+		if (ret)
+			break;
+
+		if(show_progress) {
+			percent_current = (unsigned int)
+			    (((unsigned long long)(i + cur_len)) * 100 / len);
+			if(percent_current != percent_last) {
+				msg_cinfo("\b\b\b%2d%%", percent_current);
+				percent_last = percent_current;
+			}
+		}
+	}
+
+	if(show_progress && !ret)
+		msg_cinfo("\b\b\b\b"); /* remove progress percents from the screen */
+
+	return ret;
 }
 
 #endif
