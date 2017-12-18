@@ -21,6 +21,7 @@
 /*
  *   History of changes:
  *	05/01/2015  Add compliance to JESD216B standard and SFDP revision 1.6
+ *	07/01/2015  Modified to support SFDP revision 1.5 (for Micron flash chips)
  */
 
 #include <stdint.h>
@@ -179,7 +180,7 @@ static int sfdp_change_uniform_eraser_4ba_direct(struct flashchip *chip, int era
 }
 
 /* Parse of JEDEC SFDP Basic Flash Parameter Table */
-static int sfdp_fill_flash(struct flashchip *chip, uint8_t *buf, uint16_t len, int sfdp_rev_16)
+static int sfdp_fill_flash(struct flashchip *chip, uint8_t *buf, uint16_t len, int sfdp_rev_15)
 {
 	uint8_t opcode_4k_erase = 0xFF;
 	uint32_t tmp32;
@@ -298,10 +299,10 @@ static int sfdp_fill_flash(struct flashchip *chip, uint8_t *buf, uint16_t len, i
 	msg_cdbg2("  Flash chip size is %d kB.\n", chip->total_size);
 
 	if (total_size > (1 << 24)) {
-		if(!sfdp_rev_16) {
+		if(!sfdp_rev_15) {
 			msg_cdbg("Flash chip size is bigger than what 3-Byte addressing "
 				 "can access but chip's SFDP revision is lower than 1.6 "
-				 "\nConsequently 4-bytes addressing can NOT be "
+				 "(1.5).\nConsequently 4-bytes addressing can NOT be "
 				 "properly configured using current SFDP information.\n");
 #ifndef FBA_USE_EXT_ADDR_REG_BY_DEFAULT
 			msg_cdbg("Assuming that 4-bytes addressing mode can be "
@@ -376,10 +377,10 @@ static int sfdp_fill_flash(struct flashchip *chip, uint8_t *buf, uint16_t len, i
 	if (chip->feature_bits & FEATURE_4BA_ONLY)
 		goto done;
 
-	/* If the SFDP revision supported by the chip is lower that 1.6
+	/* If the SFDP revision supported by the chip is lower that 1.6 (1.5)
 	   we can not read and analyze 16th DWORD of Basic Flash Parameter Table.
 	   Using defaults by FBA_USE_EXT_ADDR_REG_BY_DEFAULT define. */
-	if(!sfdp_rev_16)
+	if(!sfdp_rev_15)
 		goto done;
 
 	if (len < 16 * 4) {
@@ -602,7 +603,7 @@ int probe_spi_sfdp(struct flashctx *flash)
 	struct sfdp_tbl_hdr *hdrs;
 	uint8_t *hbuf;
 	uint8_t *tbuf;
-	int sfdp_rev_16 = 0;
+	int sfdp_rev_16 = 0, sfdp_rev_15 = 0;
 
 	if (spi_sfdp_read_sfdp(flash, 0x00, buf, 4)) {
 		msg_cdbg("Receiving SFDP signature failed.\n");
@@ -636,8 +637,25 @@ int probe_spi_sfdp(struct flashctx *flash)
 	   2) 16th dword has information how to enter
 		and exit 4-bytes addressing mode
 	   3) 4-Bytes Address Instruction Table with ID 0xFF84
+
+		However we can see in the datasheet for Micron's
+	   MT25Q 512Mb chip (MT25QL512AB/MT25QU512AB) that the
+	   chip returnes SFDP revision 1.5 and has 16 dwords
+	   in its Basic Flash Paramater Table. Also the information
+	   about addressing mode switch is exist in the 16th dword.
+	   But 4-Bytes Address Instruction Table is absent.
+
+		So we will use 16th dword from SFDP revision 1.5
+	   but 4-Bytes Address Instruction Table from SFDP 1.6 only.
+	   This assumption is made for better support of Micron
+	   flash chips.
+
+		FIXME: SFDP revisions compliance should be checked
+	   more carefully after more information about JESD216B
+	   SFDP tables will be known from real flash chips.
 	*/
 	sfdp_rev_16 = (buf[1] == 1 && buf[0] >= 6) || buf[1] > 1;
+	sfdp_rev_15 = (buf[1] == 1 && buf[0] >= 5) || buf[1] > 1;
 
 	nph = buf[2];
 	msg_cdbg2("SFDP number of parameter headers is %d (NPH = %d).\n",
@@ -717,7 +735,7 @@ int probe_spi_sfdp(struct flashctx *flash)
 					 "\n");
 #ifdef JESD216B_SIMULATION
 			if(!sfdp_jesd216b_simulation_dw16(&tbuf, &len))
-				sfdp_rev_16 = 1; /* pretend as SFDP rev 1.6 */
+				sfdp_rev_16 = sfdp_rev_15 = 1; /* pretend as SFDP rev 1.6 */
 #endif
 			if (hdrs[i].v_major != 0x01) {
 				msg_cdbg("The chip contains an unknown "
@@ -727,7 +745,7 @@ int probe_spi_sfdp(struct flashctx *flash)
 				msg_cdbg("Length of the mandatory JEDEC SFDP "
 					 "parameter table is wrong (%d B), "
 					 "skipping it.\n", len);
-			} else if (sfdp_fill_flash(flash->chip, tbuf, len, sfdp_rev_16) == 0)
+			} else if (sfdp_fill_flash(flash->chip, tbuf, len, sfdp_rev_15) == 0)
 				ret = 1;
 #ifdef JESD216B_SIMULATION
 			if(ret == 1 && !sfdp_jesd216b_simulation_4bait(&tbuf, &len))
