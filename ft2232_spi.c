@@ -86,6 +86,7 @@ const struct dev_entry devs_ft2232spi[] = {
 
 #define DEFAULT_DIVISOR 2
 
+#define BITMODE_BITBANG_RESET	0
 #define BITMODE_BITBANG_NORMAL	1
 #define BITMODE_BITBANG_SPI	2
 
@@ -375,6 +376,10 @@ int ft2232_spi_init(void)
 
 	if (ftdi_write_data_set_chunksize(ftdic, 256)) {
 		msg_perr("Unable to set chunk size (%s).\n", ftdi_get_error_string(ftdic));
+	}
+
+	if (ftdi_set_bitmode(ftdic, 0x00, BITMODE_BITBANG_RESET) < 0) {
+		msg_perr("Unable to reset MPSSE controller (%s).\n", ftdi_get_error_string(ftdic));
 	}
 
 	if (ftdi_set_bitmode(ftdic, 0x00, BITMODE_BITBANG_SPI) < 0) {
