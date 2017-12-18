@@ -14694,14 +14694,14 @@ const struct flashchip flashchips[] = {
 		.block_erasers	=
 		{
 			{
-				.eraseblocks = { {4 * 1024, 8192} },
-				.block_erase = spi_block_erase_20_4ba, /* erases 4k from 4-bytes addressing mode */
+				.eraseblocks = { {64 * 1024, 512} },
+				.block_erase = spi_block_erase_d8_4ba, /* erases 64k from 4-bytes addressing mode */
 			}, {
 				.eraseblocks = { {32 * 1024, 1024} },
 				.block_erase = spi_block_erase_52_4ba, /* erases 32k from 4-bytes addressing mode */
 			}, {
-				.eraseblocks = { {64 * 1024, 512} },
-				.block_erase = spi_block_erase_d8_4ba, /* erases 64k from 4-bytes addressing mode */
+				.eraseblocks = { {4 * 1024, 8192} },
+				.block_erase = spi_block_erase_20_4ba, /* erases 4k from 4-bytes addressing mode */
 			}, {
 				.eraseblocks = { {32 * 1024 * 1024, 1} },
 				.block_erase = spi_block_erase_60,
