@@ -1481,8 +1481,8 @@ static int selfcheck_eraseblocks(const struct flashchip *chip)
 			continue;
 		if (done != chip->total_size * 1024) {
 			msg_gerr("ERROR: Flash chip %s erase function %i "
-				"region walking resulted in 0x%06x bytes total,"
-				" expected 0x%06x bytes. Please report a bug at"
+				"region walking resulted in 0x%08x bytes total,"
+				" expected 0x%08x bytes. Please report a bug at"
 				" flashrom@flashrom.org\n", chip->name, k,
 				done, chip->total_size * 1024);
 			ret = 1;
@@ -1632,7 +1632,7 @@ static int walk_eraseblocks(struct flashctx *const flashctx,
 				first = false;
 			else
 				msg_cdbg(", ");
-			msg_cdbg("0x%06x-0x%06x:", info->erase_start, info->erase_end);
+			msg_cdbg("0x%08x-0x%08x:", info->erase_start, info->erase_end);
 
 			ret = per_blockfn(flashctx, info, eraser->block_erase);
 			if (ret)
