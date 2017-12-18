@@ -363,6 +363,11 @@ __attribute__((format(printf, 2, 3)));
 #define msg_pspew(...)	print(FLASHROM_MSG_SPEW, __VA_ARGS__)	/* programmer debug spew  */
 #define msg_cspew(...)	print(FLASHROM_MSG_SPEW, __VA_ARGS__)	/* chip debug spew  */
 
+/* Read progress will be shown for reads more than 256KB */
+#define MIN_LENGTH_TO_SHOW_READ_PROGRESS 256 * 1024
+/* Read progress will be shown for erases and writes more than 64KB */
+#define MIN_LENGTH_TO_SHOW_ERASE_AND_WRITE_PROGRESS 64 * 1024
+
 /* layout.c */
 int register_include_arg(char *name);
 int read_romlayout(const char *name);

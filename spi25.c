@@ -963,6 +963,16 @@ int spi_read_chunked(struct flashctx *flash, uint8_t *buf, unsigned int start,
 	unsigned int i, j, starthere, lenhere, toread;
 	/* Limit for multi-die 4-byte-addressing chips. */
 	unsigned int area_size = min(flash->chip->total_size * 1024, 16 * 1024 * 1024);
+	int show_progress = 0;
+	unsigned int percent_last = 0, percent_current = 0;
+
+	/* progress visualizaion init */
+	if(len >= MIN_LENGTH_TO_SHOW_READ_PROGRESS) {
+		msg_cinfo(" "); /* only this space will go to logfile but all strings with \b wont. */
+		msg_cinfo("\b 0%%");
+		percent_last = percent_current = 0;
+		show_progress = 1; /* enable progress visualizaion */
+	}
 
 	/* Warning: This loop has a very unusual condition and body.
 	 * The loop needs to go through each area with at least one affected
@@ -990,7 +1000,19 @@ int spi_read_chunked(struct flashctx *flash, uint8_t *buf, unsigned int start,
 		}
 		if (rc)
 			break;
+
+		if(show_progress) {
+			percent_current = (unsigned int) ((unsigned long long)(starthere +
+									lenhere - start) * 100 / len);
+			if(percent_current != percent_last) {
+				msg_cinfo("\b\b\b%2d%%", percent_current);
+				percent_last = percent_current;
+			}
+		}
 	}
+
+	if(show_progress && !rc)
+		msg_cinfo("\b\b\b\b"); /* remove progress percents from the screen */
 
 	return rc;
 }

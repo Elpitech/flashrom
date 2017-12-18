@@ -1602,6 +1602,17 @@ static int walk_eraseblocks(struct flashctx *const flashctx,
 	size_t i, j;
 	bool first = true;
 	struct block_eraser *const eraser = &flashctx->chip->block_erasers[erasefunction];
+	int show_progress = 0;
+	unsigned int percent_last = 0, percent_current = 0;
+	unsigned long size = flashctx->chip->total_size * 1024;
+
+	/* progress visualizaion init */
+	if(size >= MIN_LENGTH_TO_SHOW_ERASE_AND_WRITE_PROGRESS) {
+		msg_cinfo(" "); /* only this space will go to logfile but all strings with \b wont. */
+		msg_cinfo("\b 0%%");
+		percent_last = percent_current = 0;
+		show_progress = 1; /* enable progress visualizaion */
+	}
 
 	info->erase_start = 0;
 	for (i = 0; i < NUM_ERASEREGIONS; ++i) {
@@ -1626,10 +1637,22 @@ static int walk_eraseblocks(struct flashctx *const flashctx,
 			ret = per_blockfn(flashctx, info, eraser->block_erase);
 			if (ret)
 				return ret;
+
+			if(show_progress) {
+				percent_current = (unsigned int) ((unsigned long long)info->erase_start * 100 / size);
+				if(percent_current != percent_last) {
+					msg_cinfo("\b\b\b%2d%%", percent_current);
+					percent_last = percent_current;
+				}
+			}
 		}
 		if (info->region_end < info->erase_start)
 			break;
 	}
+
+	if(show_progress)
+		msg_cinfo("\b\b\b\b"); /* remove progress percents from the screen */
+
 	msg_cdbg("\n");
 	return 0;
 }

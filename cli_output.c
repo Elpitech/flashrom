@@ -90,7 +90,8 @@ int flashrom_print_cb(enum flashrom_log_level level, const char *fmt, va_list ap
 			fflush(output_type);
 	}
 #ifndef STANDALONE
-	if ((level <= verbose_logfile) && logfile) {
+	/* skip of msgs starting from '\b' added to skip progress percents */
+	if ((level <= verbose_logfile) && logfile && (!fmt || fmt[0] != '\b')) {
 		ret = vfprintf(logfile, fmt, logfile_args);
 		if (level != FLASHROM_MSG_SPEW)
 			fflush(logfile);
