@@ -918,3 +918,103 @@ int spi_block_erase_dc_4ba_direct(struct flashctx *flash, unsigned int addr,
 	/* FIXME: Check the status register for errors. */
 	return 0;
 }
+
+/* Selector for 4k eraser that chooses between 4-bytes addressing mode
+   and use of Extended Address Register from 3-bytes addressing mode */
+int spi_block_erase_20_4ba_selector(struct flashctx *flash, unsigned int addr,
+		       unsigned int blocklen)
+{
+	msg_trace("-> %s\n", __func__);
+
+	return (flash->chip->feature_bits & FEATURE_4BA_EXTENDED_ADDR_REG) ?
+		spi_block_erase_20_4ba_ereg(flash, addr, blocklen) :
+		spi_block_erase_20_4ba(flash, addr, blocklen);
+}
+
+/* Selector for 32k eraser that chooses between 4-bytes addressing mode
+   and use of Extended Address Register from 3-bytes addressing mode */
+int spi_block_erase_52_4ba_selector(struct flashctx *flash, unsigned int addr,
+		       unsigned int blocklen)
+{
+	msg_trace("-> %s\n", __func__);
+
+	return (flash->chip->feature_bits & FEATURE_4BA_EXTENDED_ADDR_REG) ?
+		spi_block_erase_52_4ba_ereg(flash, addr, blocklen) :
+		spi_block_erase_52_4ba(flash, addr, blocklen);
+}
+
+/* Selector for 64k eraser that chooses between 4-bytes addressing mode
+   and use of Extended Address Register from 3-bytes addressing mode */
+int spi_block_erase_d8_4ba_selector(struct flashctx *flash, unsigned int addr,
+		       unsigned int blocklen)
+{
+	msg_trace("-> %s\n", __func__);
+
+	return (flash->chip->feature_bits & FEATURE_4BA_EXTENDED_ADDR_REG) ?
+		spi_block_erase_d8_4ba_ereg(flash, addr, blocklen) :
+		spi_block_erase_d8_4ba(flash, addr, blocklen);
+}
+
+/* Chooser for erase function by instruction opcode for block eraser instructions
+   to work with 4-bytes addressing flash chips. This chooser is called from sfdp.c
+   during parse of 8th & 9th dwords of SFDP Basic Flash Parameter Table */
+erasefunc_t *spi_get_erasefn_from_opcode_4ba(uint8_t opcode)
+{
+	msg_trace("-> %s\n", __func__);
+
+	switch(opcode){
+	case 0xff:
+	case 0x00:
+		/* Not specified, assuming "not supported". */
+		return NULL;
+	case 0x20:
+		return &spi_block_erase_20_4ba_selector; /* selector */
+	case 0x52:
+		return &spi_block_erase_52_4ba_selector; /* selector */
+	case 0x60:
+		return &spi_block_erase_60;
+	case 0x62:
+		return &spi_block_erase_62;
+	case 0xc7:
+		return &spi_block_erase_c7;
+	case 0xd8:
+		return &spi_block_erase_d8_4ba_selector; /* selector */
+	case 0x50:
+	case 0x81:
+	case 0xc4:
+	case 0xd7:
+	case 0xdb:
+		msg_cinfo("%s: erase opcode (0x%02x) doesn't have its 4-bytes addressing version."
+			  " Please report this at flashrom@flashrom.org\n", __func__, opcode);
+		return NULL;
+	default:
+		msg_cinfo("%s: unknown erase opcode (0x%02x). Please report "
+			  "this at flashrom@flashrom.org\n", __func__, opcode);
+		return NULL;
+	}
+}
+
+/* Chooser for erase function by instruction opcode for block eraser instructions
+   which can be used from ANY mode (3-bytes or 4-bytes). This chooser is called
+   from sfdp.c during parse of SFDP 4-Bytes Address Instruction Table (JESD216B) */
+erasefunc_t *spi_get_erasefn_from_opcode_4ba_direct(uint8_t opcode)
+{
+	msg_trace("-> %s\n", __func__);
+
+	switch(opcode){
+	case 0xff:
+	case 0x00:
+		/* Not specified, assuming "not supported". */
+		return NULL;
+	case 0x21:
+		return &spi_block_erase_21_4ba_direct;			/* direct */
+	case 0x5C:
+		return &spi_block_erase_5c_4ba_direct;			/* direct */
+	case 0xdc:
+		return &spi_block_erase_dc_4ba_direct;			/* direct */
+	default:
+		msg_cinfo("%s: unknown erase opcode (0x%02x). Please report "
+			  "this at flashrom@flashrom.org\n", __func__, opcode);
+		return NULL;
+	}
+}

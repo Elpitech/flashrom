@@ -76,6 +76,40 @@
 #define JEDEC_BE_DC_4BA_OUTSIZE	0x05
 #define JEDEC_BE_DC_4BA_INSIZE	0x00
 
+/* JEDEC Basic Flash Parameters Table definition */
+#define JEDEC_BFPT_ID					0xFF00
+
+/* JEDEC Basic Flash Parameters Table 16th dword according to JESD216B */
+/* 16th dword of BFPT, bits 24:31 (Enter 4-Byte Addressing) */
+#define JEDEC_BFPT_DW16_ENTER_B7			(1UL << 24)
+#define JEDEC_BFPT_DW16_ENTER_B7_WE			(1UL << 25)
+#define JEDEC_BFPT_DW16_ENTER_EXTENDED_ADDR_REG		(1UL << 26)
+#define JEDEC_BFPT_DW16_ENTER_BANK_ADDR_REG_EN_BIT	(1UL << 27)
+#define JEDEC_BFPT_DW16_ENTER_NV_CONFIG_REG		(1UL << 28)
+#define JEDEC_BFPT_DW16_VENDOR_SET			(1UL << 29)
+#define JEDEC_BFPT_DW16_4_BYTES_ADDRESS_ONLY		(1UL << 30)
+#define JEDEC_BFPT_DW16_ENTER_RESERVED			(1UL << 31)
+/* 16th dword of BFPT, bits 14:23 (Exit 4-Byte Addressing) */
+#define JEDEC_BFPT_DW16_EXIT_E9				(1UL << 14)
+#define JEDEC_BFPT_DW16_EXIT_E9_WE			(1UL << 15)
+#define JEDEC_BFPT_DW16_EXIT_EXTENDED_ADDR_REG		(1UL << 16)
+#define JEDEC_BFPT_DW16_EXIT_BANK_ADDR_REG_EN_BIT	(1UL << 17)
+#define JEDEC_BFPT_DW16_EXIT_NV_CONFIG_REG		(1UL << 18)
+#define JEDEC_BFPT_DW16_EXIT_HARD_RESET 		(1UL << 19)
+#define JEDEC_BFPT_DW16_EXIT_SOFT_RESET 		(1UL << 20)
+#define JEDEC_BFPT_DW16_EXIT_POWER_CYCLE 		(1UL << 21)
+#define JEDEC_BFPT_DW16_EXIT_RESERVED_1 		(1UL << 22)
+#define JEDEC_BFPT_DW16_EXIT_RESERVED_2 		(1UL << 23)
+
+/* JEDEC 4-Bytes Addressing Table 1st dword according to JESD216B */
+#define JEDEC_4BAIT_ID 					0xFF84
+#define JEDEC_4BAIT_READ_SUPPORT 			(1UL << 0)
+#define JEDEC_4BAIT_PROGRAM_SUPPORT 			(1UL << 6)
+#define JEDEC_4BAIT_ERASE_TYPE_1_SUPPORT 		(1UL << 9)
+#define JEDEC_4BAIT_ERASE_TYPE_2_SUPPORT 		(1UL << 10)
+#define JEDEC_4BAIT_ERASE_TYPE_3_SUPPORT 		(1UL << 11)
+#define JEDEC_4BAIT_ERASE_TYPE_4_SUPPORT 		(1UL << 12)
+
 /* enter 4-bytes addressing mode */
 int spi_enter_4ba_b7(struct flashctx *flash);
 int spi_enter_4ba_b7_we(struct flashctx *flash);
@@ -109,6 +143,15 @@ int spi_nbyte_read_4ba_direct(struct flashctx *flash, unsigned int addr, uint8_t
 int spi_block_erase_21_4ba_direct(struct flashctx *flash, unsigned int addr, unsigned int blocklen);
 int spi_block_erase_5c_4ba_direct(struct flashctx *flash, unsigned int addr, unsigned int blocklen);
 int spi_block_erase_dc_4ba_direct(struct flashctx *flash, unsigned int addr, unsigned int blocklen);
+
+/* erase functions choosers for 4-bytes addressing mode */
+erasefunc_t *spi_get_erasefn_from_opcode_4ba(uint8_t opcode);
+erasefunc_t *spi_get_erasefn_from_opcode_4ba_direct(uint8_t opcode);
+
+/* selection of erase function between 4-bytes addressing mode and use of extended address register */
+int spi_block_erase_20_4ba_selector(struct flashctx *flash, unsigned int addr, unsigned int blocklen);
+int spi_block_erase_52_4ba_selector(struct flashctx *flash, unsigned int addr, unsigned int blocklen);
+int spi_block_erase_d8_4ba_selector(struct flashctx *flash, unsigned int addr, unsigned int blocklen);
 
 
 #endif /* __SPI_4BA_H__ */
