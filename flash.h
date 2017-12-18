@@ -327,6 +327,7 @@ int do_verify(struct flashctx *, const char *const filename);
 #define ERROR_FLASHROM_LIMIT -201
 
 /* cli_common.c */
+char *flashsize_to_text(unsigned int chip_size);
 void print_chip_support_status(const struct flashchip *chip);
 
 /* cli_output.c */

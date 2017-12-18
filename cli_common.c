@@ -24,6 +24,20 @@
 #include <string.h>
 #include "flash.h"
 
+char *flashsize_to_text(unsigned int chip_size)
+{
+	char *ret = malloc(100);
+	if(chip_size < 1024) {
+		sprintf(ret, "%d kB", chip_size);
+	} else if(chip_size % 1024 == 0){
+		sprintf(ret, "%d MB", chip_size / 1024);
+	} else {
+		sprintf(ret, "%1.1f MB", (double)chip_size / 1024);
+	}
+	ret = realloc(ret, strlen(ret) + 1);
+	return ret;
+}
+
 void print_chip_support_status(const struct flashchip *chip)
 {
 	if (chip->feature_bits & FEATURE_OTP) {

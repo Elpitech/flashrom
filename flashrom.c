@@ -1202,6 +1202,7 @@ int probe_flash(struct registered_master *mst, int startchip, struct flashctx *f
 	const struct flashchip *chip;
 	enum chipbustype buses_common;
 	char *tmp;
+	char *tmp2;
 
 	for (chip = flashchips + startchip; chip && chip->name; chip++) {
 		if (chip_to_probe && strcmp(chip->name, chip_to_probe) != 0)
@@ -1209,7 +1210,9 @@ int probe_flash(struct registered_master *mst, int startchip, struct flashctx *f
 		buses_common = mst->buses_supported & chip->bustype;
 		if (!buses_common)
 			continue;
-		msg_gdbg("Probing for %s %s, %d kB: ", chip->vendor, chip->name, chip->total_size);
+		tmp2 = flashsize_to_text(chip->total_size);
+		msg_gdbg("Probing for %s %s, %s: ", chip->vendor, chip->name, tmp2);
+		free(tmp2);
 		if (!chip->probe && !force) {
 			msg_gdbg("failed! flashrom has no probe function for this flash chip.\n");
 			continue;
@@ -1291,10 +1294,12 @@ notfound:
 	fallback->entry.included	= true;
 	strcpy(fallback->entry.name, "complete flash");
 
+	tmp2 = flashsize_to_text(flash->chip->total_size);
 	tmp = flashbuses_to_text(flash->chip->bustype);
-	msg_cinfo("%s %s flash chip \"%s\" (%d kB, %s) ", force ? "Assuming" : "Found",
-		  flash->chip->vendor, flash->chip->name, flash->chip->total_size, tmp);
+	msg_cinfo("%s %s flash chip \"%s\" (%s, %s) ", force ? "Assuming" : "Found",
+		  flash->chip->vendor, flash->chip->name, tmp2, tmp);
 	free(tmp);
+	free(tmp2);
 #if CONFIG_INTERNAL == 1
 	if (programmer_table[programmer].map_flash_region == physmap)
 		msg_cinfo("mapped at physical address 0x%0*" PRIxPTR ".\n",
