@@ -950,4 +950,7 @@
 #define WINBOND_W49V002A	0xB0
 #define WINBOND_W49V002FA	0x32
 
+#define WINBOND2_ID		0x67	/* Winbond */
+#define WINBOND2_25R128_V	0x8	/* 25R128FV */
+
 #endif /* !FLASHCHIPS_H */
