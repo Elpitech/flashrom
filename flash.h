@@ -100,7 +100,7 @@ enum write_granularity {
  * How many different erase functions do we have per chip?
  * Atmel AT25FS010 has 6 different functions.
  */
-#define NUM_ERASEFUNCTIONS 6
+#define NUM_ERASEFUNCTIONS 8
 
 /* Feature bits used for non-SPI only */
 #define FEATURE_REGISTERMAP	(1 << 0)

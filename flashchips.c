@@ -9789,6 +9789,62 @@ const struct flashchip flashchips[] = {
 	},
 
 	{
+		.vendor		= "Micron/Numonyx/ST",
+		.name		= "N25Q512..3E", /* ..3E = 3V, uniform 64KB/4KB blocks/sectors */
+		.bustype	= BUS_SPI,
+		.manufacture_id = ST_ID,
+		.model_id	= ST_N25Q512__3E,
+		.total_size	= 65536,
+		.page_size	= 256,
+		/* supports SFDP */
+		/* OTP: 64B total; read 0x4B, write 0x42 */
+		.feature_bits	= FEATURE_WRSR_WREN | FEATURE_OTP | FEATURE_4BA_SUPPORT | FEATURE_4BA_ALL_DIRECT,
+		.four_bytes_addr_funcs =
+		{
+			.enter_4ba = spi_enter_4ba_b7, /* enter 4-bytes addressing mode by CMD B7 */
+			.read_nbyte = spi_nbyte_read_4ba_direct, /* read directly from any mode, no need to enter 4ba */
+			.program_byte = spi_byte_program_4ba_direct_n25q, /* write directly from any mode, no need to enter 4ba */
+			.program_nbyte = spi_nbyte_program_4ba_direct_n25q /* write directly from any mode, no need to enter 4ba */
+		},
+		.tested		= TEST_OK_PREW,
+		.probe		= probe_spi_rdid,
+		.probe_timing	= TIMING_ZERO,
+		.block_erasers	=
+		{
+			{
+				.eraseblocks = { {64 * 1024, 1024} },
+				.block_erase = spi_block_erase_dc_4ba_direct_n25q,
+			}, /*{
+				.eraseblocks = { {32 * 1024, 2048} },
+				.block_erase = spi_block_erase_5c_4ba_direct,
+			}, {
+				.eraseblocks = { {4 * 1024, 16384} },
+				.block_erase = spi_block_erase_21_4ba_direct,
+			}, */{
+				.eraseblocks = { {64 * 1024, 1024} },
+				.block_erase = spi_block_erase_d8,
+			}, /*{
+				.eraseblocks = { {32 * 1024, 2048 } },
+				.block_erase = spi_block_erase_52,
+			}, {
+				.eraseblocks = { {4 * 1024, 16384 } },
+				.block_erase = spi_block_erase_20,
+			}, */{
+				.eraseblocks = { {64 * 1024 * 1024, 1} },
+				.block_erase = spi_block_erase_60,
+			}, {
+				.eraseblocks = { {64 * 1024 * 1024, 1} },
+				.block_erase = spi_block_erase_c7,
+			}
+		},
+		.printlock	= spi_prettyprint_status_register_n25q, /* TODO: config, lock, flag regs */
+		.unlock		= spi_disable_blockprotect_n25q, /* TODO: per 64kB sector lock registers */
+		.write		= spi_chip_write_256, /* Multi I/O supported */
+		.read		= spi_chip_read, /* Fast read (0x0B) and multi I/O supported */
+		.voltage	= {2700, 3600},
+	},
+
+	{
 		.vendor		= "MoselVitelic",
 		.name		= "V29C51000B",
 		.bustype	= BUS_PARALLEL,

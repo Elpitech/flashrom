@@ -32,9 +32,20 @@
 
 static int spi_rdid(struct flashctx *flash, unsigned char *readarr, int bytes)
 {
+	static const unsigned char cmd0[1] = { 0xFF };
 	static const unsigned char cmd[JEDEC_RDID_OUTSIZE] = { JEDEC_RDID };
 	int ret;
 	int i;
+
+	/* Micron MT25QL512xBA, Power Loss Recovery
+		For power loss recovery, the second part of the sequence is exiting from dual or quad
+		SPI protocol by using the following FFh sequence: DQ0/DQ4 and DQ3/DQ7 equal to 1
+		for 8 clock cycles within S# LOW; S# becomes HIGH before 9th clock cycle. After this
+		two-part sequence the extended SPI protocol is active.
+	*/
+	ret = spi_send_command(flash, sizeof(cmd0), 0, cmd0, NULL);
+	if (ret)
+		return ret;
 
 	ret = spi_send_command(flash, sizeof(cmd), bytes, cmd, readarr);
 	if (ret)

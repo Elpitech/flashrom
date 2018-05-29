@@ -651,6 +651,7 @@ int spi_block_erase_d8_4ba_ereg(struct flashctx *flash, unsigned int addr,
 	while (spi_read_status_register(flash) & SPI_SR_WIP)
 		programmer_delay(100 * 1000);
 	/* FIXME: Check the status register for errors. */
+
 	return 0;
 }
 
@@ -1017,4 +1018,133 @@ erasefunc_t *spi_get_erasefn_from_opcode_4ba_direct(uint8_t opcode)
 			  "this at flashrom@flashrom.org\n", __func__, opcode);
 		return NULL;
 	}
+}
+
+/* Erase 64 KB of flash with 4-bytes address from ANY mode (3-bytes or 4-bytes)
+   JEDEC_BE_DC_4BA (DCh) instruction is new for 4-bytes addressing flash chips.
+   The presence of this instruction for an exact chip should be checked
+   by its datasheet or from SFDP 4-Bytes Address Instruction Table (JESD216B). */
+int spi_block_erase_dc_4ba_direct_n25q(struct flashctx *flash, unsigned int addr,
+				   unsigned int blocklen)
+{
+	int result;
+	unsigned char wrencmd[JEDEC_WREN_OUTSIZE] = { JEDEC_WREN };
+	unsigned char erasecmd[JEDEC_BE_DC_4BA_OUTSIZE] = {
+		JEDEC_BE_DC_4BA,
+		(addr >> 24) & 0xff,
+		(addr >> 16) & 0xff,
+		(addr >> 8) & 0xff,
+		(addr >> 0) & 0xff
+	};
+
+	msg_trace("-> %s (0x%08X-0x%08X)\n", __func__, addr, addr + blocklen - 1);
+
+	result = spi_send_command(flash, sizeof(wrencmd), 0, wrencmd, NULL);
+	if (result) {
+		msg_cerr("%s failed during command execution at address 0x%x\n", __func__, addr);
+		return result;
+	}
+
+	/* Wait until the Write-Latch-Enable bit is set, wait in 15 mks steps. */
+	while (!(spi_read_status_register(flash) & SPI_SR_WEL))
+		programmer_delay(15);
+
+	result = spi_send_command(flash, sizeof(erasecmd), 0, erasecmd, NULL);
+	if (result) {
+		msg_cerr("%s failed during command execution at address 0x%x\n", __func__, addr);
+	}
+
+	/* Wait until the Write-In-Progress bit is cleared.
+	 * This usually takes 100-4000 ms, so wait in 100 ms steps.
+	 */
+	while (spi_read_status_register(flash) & SPI_SR_WIP)
+		programmer_delay(100 * 1000);
+	/* FIXME: Check the status register for errors. */
+	return 0;
+}
+
+/* Program one flash byte with 4-bytes address from ANY mode (3-bytes or 4-bytes)
+   JEDEC_BYTE_PROGRAM_4BA (12h) instruction is new for 4-bytes addressing flash chips.
+   The presence of this instruction for an exact chip should be checked
+   by its datasheet or from SFDP 4-Bytes Address Instruction Table (JESD216B). */
+int spi_byte_program_4ba_direct_n25q(struct flashctx *flash, unsigned int addr,
+				 uint8_t databyte)
+{
+	int result;
+	unsigned char wrencmd[JEDEC_WREN_OUTSIZE] = { JEDEC_WREN };
+	unsigned char progcmd[JEDEC_BYTE_PROGRAM_4BA_OUTSIZE] = {
+		JEDEC_BYTE_PROGRAM_4BA,
+		(addr >> 24) & 0xff,
+		(addr >> 16) & 0xff,
+		(addr >> 8) & 0xff,
+		(addr >> 0) & 0xff,
+		databyte
+	};
+
+	msg_trace("-> %s (0x%08X)\n", __func__, addr);
+
+	result = spi_send_command(flash, sizeof(wrencmd), 0, wrencmd, NULL);
+	if (result) {
+		msg_cerr("%s failed during command execution at address 0x%x\n", __func__, addr);
+		return result;
+	}
+
+	/* Wait until the Write-Latch-Enable bit is set, wait in 7 mks steps. */
+	while (!(spi_read_status_register(flash) & SPI_SR_WEL))
+		programmer_delay(7);
+
+	result = spi_send_command(flash, JEDEC_BYTE_PROGRAM_4BA_OUTSIZE, 0, progcmd, NULL);
+	if (result) {
+		msg_cerr("%s failed during command execution at address 0x%x\n", __func__, addr);
+	}
+
+	return result;
+}
+
+/* Program flash bytes with 4-bytes address from ANY mode (3-bytes or 4-bytes)
+   JEDEC_BYTE_PROGRAM_4BA (12h) instruction is new for 4-bytes addressing flash chips.
+   The presence of this instruction for an exact chip should be checked
+   by its datasheet or from SFDP 4-Bytes Address Instruction Table (JESD216B). */
+int spi_nbyte_program_4ba_direct_n25q(struct flashctx *flash, unsigned int addr,
+				  const uint8_t *bytes, unsigned int len)
+{
+	int result;
+	unsigned char wrencmd[JEDEC_WREN_OUTSIZE] = { JEDEC_WREN };
+	unsigned char progcmd[JEDEC_BYTE_PROGRAM_4BA_OUTSIZE - 1 + 256] = {
+		JEDEC_BYTE_PROGRAM_4BA,
+		(addr >> 24) & 0xff,
+		(addr >> 16) & 0xff,
+		(addr >> 8) & 0xff,
+		(addr >> 0) & 0xff
+	};
+
+	msg_trace("-> %s (0x%08X-0x%08X)\n", __func__, addr, addr + len - 1);
+
+	if (!len) {
+		msg_cerr("%s called for zero-length write\n", __func__);
+		return 1;
+	}
+	if (len > 256) {
+		msg_cerr("%s called for too long a write\n", __func__);
+		return 1;
+	}
+
+	memcpy(&progcmd[JEDEC_BYTE_PROGRAM_4BA_OUTSIZE - 1], bytes, len);
+
+	result = spi_send_command(flash, sizeof(wrencmd), 0, wrencmd, NULL);
+	if (result) {
+		msg_cerr("%s failed during command execution at address 0x%x\n", __func__, addr);
+		return result;
+	}
+
+	/* Wait until the Write-Latch-Enable bit is set, wait in 7 mks steps. */
+	while (!(spi_read_status_register(flash) & SPI_SR_WEL))
+		programmer_delay(7);
+
+	result = spi_send_command(flash, JEDEC_BYTE_PROGRAM_4BA_OUTSIZE - 1 + len, 0, progcmd, NULL);
+	if (result) {
+		msg_cerr("%s failed during command execution at address 0x%x\n", __func__, addr);
+	}
+
+	return result;
 }

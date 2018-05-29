@@ -223,4 +223,8 @@ int spi_block_erase_20_4ba_selector(struct flashctx *flash, unsigned int addr, u
 int spi_block_erase_52_4ba_selector(struct flashctx *flash, unsigned int addr, unsigned int blocklen);
 int spi_block_erase_d8_4ba_selector(struct flashctx *flash, unsigned int addr, unsigned int blocklen);
 
+int spi_block_erase_dc_4ba_direct_n25q(struct flashctx *flash, unsigned int addr, unsigned int blocklen);
+int spi_byte_program_4ba_direct_n25q(struct flashctx *flash, unsigned int addr, uint8_t databyte);
+int spi_nbyte_program_4ba_direct_n25q(struct flashctx *flash, unsigned int addr, const uint8_t *bytes, unsigned int len);
+
 #endif /* !__CHIPDRIVERS_H__ */

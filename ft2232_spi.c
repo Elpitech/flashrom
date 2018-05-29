@@ -101,6 +101,8 @@ const struct dev_entry devs_ft2232spi[] = {
  *  value: 0x08  CS=high, DI=low, DO=low, SK=low
  *    dir: 0x0b  CS=output, DI=input, DO=output, SK=output
  */
+static uint8_t hold_bits = 1 << 0;
+static uint8_t wp_bits = 1 << 7; // 7-th pin
 static uint8_t cs_bits = 0x08;
 static uint8_t pindir = 0x0b;
 static struct ftdi_context ftdic_context;
@@ -175,6 +177,19 @@ static const struct spi_master spi_master_ft2232 = {
 	.write_256	= default_spi_write_256,
 	.write_aai	= default_spi_write_aai,
 };
+
+static int ft2232_spi_shutdown(void *data)
+{
+	static unsigned char buf[] = { SET_BITS_HIGH, 0, 0, SET_BITS_LOW, 0, 0 };
+	struct ftdi_context *ftdic = &ftdic_context;
+	int ret = 0;
+
+	ret = send_buf(ftdic, buf, sizeof(buf));
+	if (ret)
+		msg_perr("ft2232_spi_shutdown: send_buf failed at end: %i\n", ret);
+
+	return 0;
+}
 
 /* Returns 0 upon success, a negative number upon errors. */
 int ft2232_spi_init(void)
@@ -430,6 +445,7 @@ int ft2232_spi_init(void)
 		goto ftdi_err;
 	}
 
+	register_shutdown(ft2232_spi_shutdown, NULL);
 	register_spi_master(&spi_master_ft2232);
 
 	return 0;
@@ -458,7 +474,7 @@ static int ft2232_spi_send_command(struct flashctx *flash,
 		return SPI_INVALID_LENGTH;
 
 	/* buf is not used for the response from the chip. */
-	bufsize = max(writecnt + 9, 260 + 9);
+	bufsize = max(writecnt + 9 + 6, 260 + 9 + 6);
 	/* Never shrink. realloc() calls are expensive. */
 	if (bufsize > oldbufsize) {
 		buf = realloc(buf, bufsize);
@@ -477,9 +493,14 @@ static int ft2232_spi_send_command(struct flashctx *flash,
 	 * operations.
 	 */
 	msg_pspew("Assert CS#\n");
+
+	buf[i++] = SET_BITS_HIGH;
+	buf[i++] = hold_bits; /* assertive */
+	buf[i++] = hold_bits;
+
 	buf[i++] = SET_BITS_LOW;
-	buf[i++] = 0 & ~cs_bits; /* assertive */
-	buf[i++] = pindir;
+	buf[i++] = 0 | wp_bits; /* & ~cs_bits; assertive */
+	buf[i++] = pindir | wp_bits;
 
 	if (writecnt) {
 		buf[i++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG;
@@ -520,7 +541,12 @@ static int ft2232_spi_send_command(struct flashctx *flash,
 	msg_pspew("De-assert CS#\n");
 	buf[i++] = SET_BITS_LOW;
 	buf[i++] = cs_bits;
-	buf[i++] = pindir;
+	buf[i++] = cs_bits;
+
+	buf[i++] = SET_BITS_HIGH;
+	buf[i++] = 0; /* assertive */
+	buf[i++] = 0;
+
 	ret = send_buf(ftdic, buf, i);
 	failed |= ret;
 	if (ret)
@@ -549,7 +575,7 @@ static int ft2232_spi_send_multicommand(struct flashctx *flash,
 			return SPI_INVALID_LENGTH;
 
 		/* buf is not used for the response from the chip. */
-		bufsize = max(i + cmds->writecnt + 9, 260 + 9);
+		bufsize = max(i + cmds->writecnt + 9 + 6, 260 + 9 + 6);
 		/* Never shrink. realloc() calls are expensive. */
 		if (bufsize > oldbufsize) {
 			buf = realloc(buf, bufsize);
@@ -568,9 +594,14 @@ static int ft2232_spi_send_multicommand(struct flashctx *flash,
 		* operations.
 		*/
 		msg_pspew("Assert CS#\n");
+
+		buf[i++] = SET_BITS_HIGH;
+		buf[i++] = hold_bits; /* assertive */
+		buf[i++] = hold_bits;
+
 		buf[i++] = SET_BITS_LOW;
-		buf[i++] = 0 & ~cs_bits; /* assertive */
-		buf[i++] = pindir;
+		buf[i++] = 0 | wp_bits; /* & ~cs_bits; assertive */
+		buf[i++] = pindir | wp_bits;
 
 		if (cmds->writecnt) {
 			buf[i++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG;
@@ -610,7 +641,11 @@ static int ft2232_spi_send_multicommand(struct flashctx *flash,
 		msg_pspew("De-assert CS#\n");
 		buf[i++] = SET_BITS_LOW;
 		buf[i++] = cs_bits;
-		buf[i++] = pindir;
+		buf[i++] = cs_bits;
+
+		buf[i++] = SET_BITS_HIGH;
+		buf[i++] = 0; /* assertive */
+		buf[i++] = 0;
 	}
 
 	if(i) {
