@@ -1336,15 +1336,17 @@ int read_buf_from_file(unsigned char *buf, unsigned long size,
 		ret = 1;
 		goto out;
 	}
+#ifdef STRICT_FILE_SIZE_MATCHING
 	if (image_stat.st_size != size) {
 		msg_gerr("Error: Image size (%jd B) doesn't match the flash chip's size (%lu B)!\n",
 			 (intmax_t)image_stat.st_size, size);
 		ret = 1;
 		goto out;
 	}
+#endif
 
 	unsigned long numbytes = fread(buf, 1, size, image);
-	if (numbytes != size) {
+	if (numbytes != image_stat.st_size) {
 		msg_gerr("Error: Failed to read complete file. Got %ld bytes, "
 			 "wanted %ld!\n", numbytes, size);
 		ret = 1;
