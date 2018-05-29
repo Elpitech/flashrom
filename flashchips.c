@@ -12090,6 +12090,45 @@ const struct flashchip flashchips[] = {
 	},
 
 	{
+		.vendor		= "Spansion",
+		.name		= "S25FL512S",
+		.bustype	= BUS_SPI,
+		.manufacture_id	= SPANSION_ID,
+		.model_id	= SPANSION_S25FL512S,
+		.total_size	= 65536,
+		.page_size	= 512,
+		.feature_bits	= FEATURE_WRSR_WREN | FEATURE_4BA_SUPPORT | FEATURE_4BA_ALL_DIRECT,
+		.four_bytes_addr_funcs =
+		{
+			.enter_4ba = NULL, /* does not support enter 4-bytes addressing mode command */
+			.read_nbyte = spi_nbyte_read_4ba_direct, /* read directly from any mode, no need to enter 4ba */
+			.program_byte = spi_byte_program_4ba_direct, /* write directly from any mode, no need to enter 4ba */
+			.program_nbyte = spi_nbyte_program_4ba_direct /* write directly from any mode, no need to enter 4ba */
+		},
+		.tested		= TEST_UNTESTED,
+		.probe		= probe_spi_rdid,
+		.probe_timing	= TIMING_ZERO,
+		.block_erasers	=
+		{
+			{
+				.eraseblocks = { {256 * 1024, 256} },
+				.block_erase = spi_block_erase_dc_4ba_direct,
+			}, {
+				.eraseblocks = { {64 * 1024 * 1024, 1} },
+				.block_erase = spi_block_erase_60,
+			}, {
+				.eraseblocks = { {64 * 1024 * 1024, 1} },
+				.block_erase = spi_block_erase_c7,
+			}
+		},
+		.printlock	= spi_prettyprint_status_register_plain, /* TODO: improve */
+		.unlock		= spi_disable_blockprotect,
+		.write		= spi_chip_write_256,
+		.read		= spi_chip_read,
+		.voltage	= {2700, 3600},
+	},
+
+	{
 		.vendor		= "SST",
 		.name		= "SST25LF040A",
 		.bustype	= BUS_SPI,
