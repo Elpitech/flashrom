@@ -35,6 +35,7 @@ int spi_chip_read(struct flashctx *flash, uint8_t *buf, unsigned int start, int 
 /* spi25.c */
 int probe_spi_rdid(struct flashctx *flash);
 int probe_spi_rdid4(struct flashctx *flash);
+int probe_spi_rdid5(struct flashctx *flash);
 int probe_spi_rems(struct flashctx *flash);
 int probe_spi_res1(struct flashctx *flash);
 int probe_spi_res2(struct flashctx *flash);

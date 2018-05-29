@@ -118,9 +118,29 @@ int spi_write_disable(struct flashctx *flash)
 static int probe_spi_rdid_generic(struct flashctx *flash, int bytes)
 {
 	const struct flashchip *chip = flash->chip;
-	unsigned char readarr[4];
+	unsigned char readarr[5];
 	uint32_t id1;
 	uint32_t id2;
+
+	/* Some SPI controllers do not support commands with writecnt=1 and
+	 * readcnt=4.
+	 */
+	if(bytes > 3) {
+		switch (flash->mst->spi.type) {
+#if CONFIG_INTERNAL == 1
+#if defined(__i386__) || defined(__x86_64__)
+			case SPI_CONTROLLER_IT87XX:
+			case SPI_CONTROLLER_WBSIO:
+				msg_cinfo("Over-3-byte RDID commands are not supported on this SPI controller\n");
+				return 0;
+				break;
+#endif
+#endif
+			default:
+				// Continue execution normally
+				break;
+		}
+	}
 
 	if (spi_rdid(flash, readarr, bytes)) {
 		return 0;
@@ -144,6 +164,11 @@ static int probe_spi_rdid_generic(struct flashctx *flash, int bytes)
 	} else {
 		id1 = readarr[0];
 		id2 = (readarr[1] << 8) | readarr[2];
+		/* Does the chip use Extended Device Identification (e.g. some Spansion chips) ? */
+		if (bytes > 4) {
+			id2 <<= 16;
+			id2 |= (readarr[3] << 8) | readarr[4];
+		}
 	}
 
 	msg_cdbg("%s: id1 0x%02x, id2 0x%02x\n", __func__, id1, id2);
@@ -169,24 +194,12 @@ int probe_spi_rdid(struct flashctx *flash)
 
 int probe_spi_rdid4(struct flashctx *flash)
 {
-	/* Some SPI controllers do not support commands with writecnt=1 and
-	 * readcnt=4.
-	 */
-	switch (flash->mst->spi.type) {
-#if CONFIG_INTERNAL == 1
-#if defined(__i386__) || defined(__x86_64__)
-	case SPI_CONTROLLER_IT87XX:
-	case SPI_CONTROLLER_WBSIO:
-		msg_cinfo("4 byte RDID not supported on this SPI controller\n");
-		return 0;
-		break;
-#endif
-#endif
-	default:
-		return probe_spi_rdid_generic(flash, 4);
-	}
+	return probe_spi_rdid_generic(flash, 4);
+}
 
-	return 0;
+int probe_spi_rdid5(struct flashctx *flash)
+{
+	return probe_spi_rdid_generic(flash, 5);
 }
 
 int probe_spi_rems(struct flashctx *flash)
