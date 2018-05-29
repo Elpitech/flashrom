@@ -673,20 +673,21 @@ static unsigned int count_usable_erasers(const struct flashctx *flash)
 	return usable_erasefunctions;
 }
 
-static int compare_range(const uint8_t *wantbuf, const uint8_t *havebuf, unsigned int start, unsigned int len)
+static int compare_range(const uint8_t* const wantbuf, const uint8_t* const havebuf, unsigned int start, unsigned int len)
 {
-	int ret = 0, failcount = 0;
-	unsigned int i;
+	int ret = 0;
+	unsigned int i, failcount = 0;
 	for (i = 0; i < len; i++) {
 		if (wantbuf[i] != havebuf[i]) {
 			/* Only print the first failure. */
-			if (!failcount++)
-				msg_cerr("FAILED at 0x%08x! Expected=0x%02x, Found=0x%02x,",
+			if (!failcount++) {
+				msg_cerr("FAILED at 0x%08X! Expected=0x%02hhX, Found=0x%02hhX,",
 					 start + i, wantbuf[i], havebuf[i]);
+			}
 		}
 	}
 	if (failcount) {
-		msg_cerr(" failed byte count from 0x%08x-0x%08x: 0x%x\n",
+		msg_cerr(" failed byte count from 0x%08X-0x%08X: %u\n",
 			 start, start + len - 1, failcount);
 		ret = -1;
 	}
