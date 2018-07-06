@@ -27,6 +27,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <time.h>
 #include "flash.h"
 #include "flashchips.h"
 #include "programmer.h"
@@ -109,6 +110,8 @@ int main(int argc, char *argv[])
 	struct flashrom_layout *layout = NULL;
 	enum programmer prog = PROGRAMMER_INVALID;
 	int ret = 0;
+	time_t start = time(NULL);
+	int optime;
 
 	static const char optstring[] = "r:Rw:v:nNVEfc:l:i:p:Lzho:";
 	static const struct option long_options[] = {
@@ -592,5 +595,11 @@ out:
 	free(logfile);
 	ret |= close_logfile();
 #endif /* !STANDALONE */
+
+	if(!ret) {
+		optime = (int) difftime(time(NULL), start);
+		msg_cinfo("Operation time: %d min %d sec.\n\n", optime / 60, optime % 60);
+	}
+
 	return ret;
 }
