@@ -667,15 +667,14 @@ static int ft2232_spi_read(struct flashctx *flash, uint8_t *buf,
 	int ret;
 	unsigned int i, cur_len;
 	const unsigned int max_read = spi_master_ft2232.max_data_read;
-	int show_progress = 0;
 	unsigned int percent_last = 0, percent_current = 0;
+	int show_progress = 0;
 
 	/* progress visualizaion init */
 	if(len >= MIN_LENGTH_TO_SHOW_READ_PROGRESS) {
 		msg_cinfo(" "); /* only this space will go to logfile but
 				 all strings with \b wont. */
 		msg_cinfo("\b 0%%");
-		percent_last = percent_current = 0;
 		show_progress = 1; /* enable progress visualizaion */
 	}
 

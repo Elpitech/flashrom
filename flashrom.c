@@ -1615,7 +1615,6 @@ static int walk_eraseblocks(struct flashctx *const flashctx,
 	if(size >= MIN_LENGTH_TO_SHOW_ERASE_AND_WRITE_PROGRESS) {
 		msg_cinfo(" "); /* only this space will go to logfile but all strings with \b wont. */
 		msg_cinfo("\b 0%%");
-		percent_last = percent_current = 0;
 		show_progress = 1; /* enable progress visualizaion */
 	}
 
