@@ -541,7 +541,7 @@ static int ft2232_spi_send_command(struct flashctx *flash,
 	msg_pspew("De-assert CS#\n");
 	buf[i++] = SET_BITS_LOW;
 	buf[i++] = cs_bits;
-	buf[i++] = cs_bits;
+	buf[i++] = pindir;
 
 	buf[i++] = SET_BITS_HIGH;
 	buf[i++] = 0; /* assertive */
@@ -641,7 +641,7 @@ static int ft2232_spi_send_multicommand(struct flashctx *flash,
 		msg_pspew("De-assert CS#\n");
 		buf[i++] = SET_BITS_LOW;
 		buf[i++] = cs_bits;
-		buf[i++] = cs_bits;
+		buf[i++] = pindir;
 
 		buf[i++] = SET_BITS_HIGH;
 		buf[i++] = 0; /* assertive */
